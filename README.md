@@ -46,10 +46,8 @@ codex -p luna
 Then ask Codex to use the installed skill:
 
 ```text
-Use $delegate-luna-workers in isolated mode. Run two workers in parallel:
-- review the API with effort=max and speed=fast
-- review the documentation with effort=high and speed=standard
-Wait for both workers and give me one summary.
+Use $delegate-luna-workers with agents=auto, effort=max, and speed=fast.
+Delegate this task to as many independent Luna workers as are useful, then give me one summary.
 ```
 
 Isolated mode is the default. A worker's speed does not need to match the parent conversation or
@@ -63,11 +61,15 @@ the other workers.
 | Speed | `fast`, `standard` | `fast` |
 | Reasoning | `low`, `medium`, `high`, `xhigh`, `max` | `max` |
 | File access | `read-only`, `workspace-write` | `read-only` |
-| Parallel workers | 1 to 4 | 1 |
+| Agents | `auto`, 1 to 4 | `auto` |
 
 Fast uses Codex Fast mode. Standard uses the normal service tier. Fast usually returns sooner but
 uses credits at a higher rate. See the [Codex speed documentation](https://learn.chatgpt.com/docs/agent-configuration/speed)
 for current usage details.
+
+With `agents=auto`, Codex uses one worker for a small or sequential task and adds workers only for
+independent work, up to four. An explicit number is an upper bound, so Codex will not duplicate work
+just to reach it.
 
 Use `workspace-write` only when you want a worker to edit files. When several workers can edit,
 give each worker separate files or directories.
@@ -130,6 +132,9 @@ Run it with:
 ```powershell
 ./scripts/luna-agent.ps1 batch --manifest ./jobs.json
 ```
+
+The skill chooses how many tasks to create. The direct `batch` command starts one worker for each
+task you supply, while `max_workers` only limits how many run at the same time.
 
 ## Check the setup
 

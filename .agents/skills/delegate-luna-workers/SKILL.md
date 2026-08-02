@@ -14,9 +14,18 @@ Platform API.
 - Read `mode` as `isolated` or `native`; default to `isolated`.
 - Read `effort` as `low`, `medium`, `high`, `xhigh`, or `max`; default to `max`.
 - Read `speed` as `fast` or `standard`; default to `fast`.
-- Read `agents` as the requested worker count; default to `1` and never exceed `4`.
+- Read `agents` as `auto` or a worker count from `1` to `4`; default to `auto`.
 - Read `sandbox` as `read-only` or `workspace-write`; default to `read-only`.
 - Require every delegated objective to be independent and bounded.
+
+For `agents=auto`, choose the smallest useful worker count after identifying independent work:
+
+- Use one worker for a single, small, or sequential objective.
+- Use one worker per independent objective, up to four workers.
+- Do not invent extra work, duplicate an objective, or parallelize dependent steps to fill slots.
+
+Treat an explicit count as an upper bound when the request has fewer safe independent objectives.
+State the selected count and task boundaries before launching workers.
 
 Each isolated job may have its own `effort`, `speed`, and `sandbox`. Fast maps to
 `service_tier = "fast"`; Standard maps to `service_tier = "default"`. These settings belong to
@@ -24,8 +33,8 @@ the isolated child process and do not need to match the parent session.
 
 ## Isolated mode (default)
 
-1. Normalize the parameters and state them briefly.
-2. Split work only along independent boundaries. Give each worker a self-contained task.
+1. Normalize the parameters, resolve `agents=auto`, and state the selected worker count briefly.
+2. Split work only along independent boundaries. Give each selected worker a self-contained task.
 3. Locate the launcher:
    - In this repository on Windows: `scripts/luna-agent.ps1`.
    - In this repository on macOS/Linux: `scripts/luna-agent.sh`.
@@ -35,7 +44,7 @@ the isolated child process and do not need to match the parent session.
      `$HOME/.codex/luna-agent/scripts/luna-agent.sh` when `CODEX_HOME` is unset.
 4. For one worker, run `run` with explicit `--effort`, `--speed`, `--sandbox`, and `--workspace`.
 5. For multiple workers, run one `batch` command with repeated `--task`, `--effort`, `--speed`,
-   and `--sandbox` values. Use `--max-workers` no greater than `4`.
+   and `--sandbox` values. Set `--max-workers` to the selected count, never greater than `4`.
 6. The launcher requires access to the saved Codex login and OpenAI network service. If the current
    shell sandbox blocks either, tell the user that the isolated runner requires host execution and
    request the narrow approval needed for the launcher command.
@@ -61,6 +70,8 @@ change the task text.
 
 Use native mode only when the user explicitly requests `mode=native`. Native workers use Codex's
 `spawn_agent` tool and inherit the parent session speed; they cannot select speed independently.
+Resolve `agents=auto` with the same rules used for isolated mode and never keep more than four
+native workers active at once.
 
 Map effort to the installed native custom agent:
 

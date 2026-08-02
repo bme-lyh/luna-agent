@@ -62,6 +62,15 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("dependencies:", metadata)
         self.assertNotIn("lunaAgentWorkers", skill + metadata)
         self.assertIn("$delegate-luna-workers", metadata)
+        self.assertIn("default to `auto`", skill)
+        self.assertIn("agents=auto", metadata)
+
+    def test_documentation_explains_auto_agent_selection(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        architecture = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+        self.assertIn("| Agents | `auto`, 1 to 4 | `auto` |", readme)
+        self.assertIn("defaults to `agents=auto`", architecture)
+        self.assertIn("up to four", architecture)
 
     def test_isolated_runner_is_dependency_free(self) -> None:
         project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))

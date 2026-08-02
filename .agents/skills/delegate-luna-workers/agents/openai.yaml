@@ -1,7 +1,7 @@
 interface:
   display_name: "Luna Worker Delegation"
   short_description: "Run Luna workers with independent speed settings"
-  default_prompt: "Use $delegate-luna-workers with mode=isolated, effort=max, and speed=fast to delegate this task to Luna."
+  default_prompt: "Use $delegate-luna-workers with mode=isolated, agents=auto, effort=max, and speed=fast to delegate this task to Luna."
 
 policy:
   allow_implicit_invocation: true

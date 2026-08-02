@@ -40,9 +40,15 @@ stay in scope.
 
 ## Concurrency
 
+The skill defaults to `agents=auto`. The parent identifies independent bounded objectives and uses
+the smallest useful worker count: one for a single or sequential objective, otherwise one per
+independent objective up to four. It does not create duplicate work to fill available slots. An
+explicit agent count is treated as an upper bound when fewer safe task boundaries exist.
+
 `batch` uses a bounded thread pool to supervise up to four child processes. Results are returned in
 manifest or command-line order even when workers finish in a different order. Job IDs must be
-unique.
+unique. The runner starts one child process per supplied task; `max_workers` is a concurrency cap,
+not a request to create more tasks.
 
 Parallel read-only work is safe for independent tasks. Workspace-write jobs need non-overlapping
 file ownership because separate Codex processes share the same working tree.
