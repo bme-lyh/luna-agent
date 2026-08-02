@@ -1,0 +1,7 @@
+interface:
+  display_name: "Native Luna Delegation"
+  short_description: "Delegate work to native Luna subagents"
+  default_prompt: "Use $delegate-luna-workers with effort=max and speed=fast to delegate this task to Luna."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,10 @@
+name = "luna_xhigh"
+description = "Deep GPT-5.6 Luna worker for difficult but clearly bounded tasks. Uses extra-high reasoning."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "xhigh"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Complete the difficult but bounded task delegated by the parent agent.
+Analyze dependencies and edge cases, make only in-scope changes, run proportionate verification, and report evidence and residual risks.
+Stop and surface any material uncertainty that would change the requested outcome.
+"""

@@ -1,0 +1,12 @@
+# Project defaults. The installer copies this file to ~/.codex/luna.config.toml.
+service_tier = "fast"
+
+[features]
+fast_mode = true
+multi_agent = true
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 4
+default_subagent_model = "gpt-5.6-luna"
+default_subagent_reasoning_effort = "max"
