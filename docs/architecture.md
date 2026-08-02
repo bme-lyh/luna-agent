@@ -4,7 +4,7 @@
 
 ```text
 Codex parent
-  -> delegate-luna-workers skill
+  -> luna-agent skill
   -> Luna Agent launcher
   -> Python runner
   -> one codex exec process per worker
@@ -73,19 +73,21 @@ The repository contains four layers:
 
 1. `.codex/config.toml` supplies the optional `luna` profile and native multi-agent defaults.
 2. `.codex/agents/*.toml` defines native compatibility presets for each reasoning effort.
-3. `.agents/skills/delegate-luna-workers` teaches Codex how to choose isolated or native mode.
+3. `.agents/skills/luna-agent` teaches Codex how to choose isolated or native mode.
 4. `src/luna_agent` implements the isolated runner.
 
 The installer copies the profile to `~/.codex/luna.config.toml`, the native presets to
-`~/.codex/agents`, the skill to `~/.agents/skills`, and the runner to
-`~/.codex/luna-agent`. It lists every managed file and refuses to replace different files unless
-the user passes `-Force` or `--force`. It does not edit the base `~/.codex/config.toml` file.
+`~/.codex/agents`, the skill to `~/.agents/skills/luna-agent`, and the runner to
+`~/.codex/luna-agent`. When upgrading with `-Force` or `--force`, it safely renames the legacy
+`delegate-luna-workers` skill directory before installing the new metadata. It stops if both names
+already exist, and it never recursively deletes a directory. It also refuses to replace different
+managed files without the force option and does not edit the base `~/.codex/config.toml` file.
 
 ## Native compatibility path
 
 ```text
 Codex parent
-  -> delegate-luna-workers skill with mode=native
+  -> luna-agent skill with mode=native
   -> native spawn_agent
   -> selected custom Luna preset
   -> inherited parent speed, sandbox, and approvals

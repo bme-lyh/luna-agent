@@ -123,6 +123,63 @@ function Install-ManagedFile {
     Write-Host "Installed: $Destination"
 }
 
+function Move-LegacySkill {
+    param(
+        [Parameter(Mandatory = $true)][string]$LegacyPath,
+        [Parameter(Mandatory = $true)][string]$DestinationPath
+    )
+
+    if (-not (Test-Path -LiteralPath $LegacyPath)) {
+        return
+    }
+    $legacyItem = Get-Item -LiteralPath $LegacyPath
+    if (-not $legacyItem.PSIsContainer) {
+        throw "Legacy skill path is not a directory: $LegacyPath"
+    }
+    if (($legacyItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "Refusing to migrate a linked legacy skill directory: $LegacyPath"
+    }
+    if (Test-Path -LiteralPath $DestinationPath) {
+        throw "Both legacy and current skill directories exist. Review them manually: $LegacyPath and $DestinationPath"
+    }
+    if (-not $Force) {
+        throw "Legacy skill found at $LegacyPath. Re-run with -Force to rename it to Luna Agent."
+    }
+
+    $skillsRootFull = [System.IO.Path]::GetFullPath($SkillsRootPath).TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.IO.Path]::AltDirectorySeparatorChar
+    )
+    if ($skillsRootFull -ieq [System.IO.Path]::GetPathRoot($skillsRootFull)) {
+        throw "Skills root must not be a filesystem root: $skillsRootFull"
+    }
+    $legacyFull = [System.IO.Path]::GetFullPath($LegacyPath)
+    $destinationFull = [System.IO.Path]::GetFullPath($DestinationPath)
+    if (
+        [System.IO.Path]::GetDirectoryName($legacyFull) -ine $skillsRootFull -or
+        [System.IO.Path]::GetDirectoryName($destinationFull) -ine $skillsRootFull
+    ) {
+        throw "Skill migration paths must be direct children of $skillsRootFull"
+    }
+
+    New-Item -ItemType Directory -Path $skillsRootFull -Force | Out-Null
+    Move-Item -LiteralPath $legacyFull -Destination $destinationFull
+    Write-Host "Migrated skill: $legacyFull -> $destinationFull"
+}
+
+$skillSource = Join-Path $projectRoot ".agents\skills\luna-agent"
+$legacySkillDestination = Join-Path $SkillsRootPath "delegate-luna-workers"
+$skillDestination = Join-Path $SkillsRootPath "luna-agent"
+Move-LegacySkill `
+    -LegacyPath $legacySkillDestination `
+    -DestinationPath $skillDestination
+Install-ManagedFile `
+    -Source (Join-Path $skillSource "SKILL.md") `
+    -Destination (Join-Path $skillDestination "SKILL.md")
+Install-ManagedFile `
+    -Source (Join-Path $skillSource "agents\openai.yaml") `
+    -Destination (Join-Path $skillDestination "agents\openai.yaml")
+
 $agentFiles = @(
     "luna-worker.toml",
     "luna-low.toml",
@@ -140,15 +197,6 @@ foreach ($agentFile in $agentFiles) {
         -Source (Join-Path $projectRoot ".codex\agents\$agentFile") `
         -Destination (Join-Path $CodexHomePath "agents\$agentFile")
 }
-
-$skillSource = Join-Path $projectRoot ".agents\skills\delegate-luna-workers"
-$skillDestination = Join-Path $SkillsRootPath "delegate-luna-workers"
-Install-ManagedFile `
-    -Source (Join-Path $skillSource "SKILL.md") `
-    -Destination (Join-Path $skillDestination "SKILL.md")
-Install-ManagedFile `
-    -Source (Join-Path $skillSource "agents\openai.yaml") `
-    -Destination (Join-Path $skillDestination "agents\openai.yaml")
 
 $runtimeFiles = @(
     "src\luna_agent\__init__.py",

@@ -32,8 +32,15 @@ macOS or Linux:
 
 Restart Codex or open a new conversation when the installer finishes.
 
-The installer adds a `luna` profile, five native Luna presets, the delegation skill, and the
+The installer adds a `luna` profile, five native Luna presets, the `luna-agent` skill, and the
 isolated runner. It does not edit your main `~/.codex/config.toml` file.
+
+In Codex, both the project and the skill appear as **Luna Agent**. Invoke the skill as
+`$luna-agent`.
+
+When upgrading from version 0.3 or earlier, add `-Force` on Windows or `--force` on macOS/Linux.
+The installer then renames the old `delegate-luna-workers` directory to `luna-agent` instead of
+deleting its contents.
 
 ## Use it in Codex
 
@@ -46,7 +53,7 @@ codex -p luna
 Then ask Codex to use the installed skill:
 
 ```text
-Use $delegate-luna-workers with agents=auto, effort=max, and speed=fast.
+Use $luna-agent with agents=auto, effort=max, and speed=fast.
 Delegate this task to as many independent Luna workers as are useful, then give me one summary.
 ```
 
@@ -170,7 +177,7 @@ thread integration, but every native worker inherits the parent conversation's s
 Use native mode only when that behavior is useful:
 
 ```text
-Use $delegate-luna-workers with mode=native, effort=max, speed=fast, and agents=2.
+Use $luna-agent with mode=native, effort=max, speed=fast, and agents=2.
 ```
 
 ## How isolation works

@@ -121,14 +121,60 @@ install_managed_file() {
   echo "Installed: $destination_path"
 }
 
+migrate_legacy_skill() {
+  legacy_path=$1
+  destination_path=$2
+
+  if [ -L "$legacy_path" ]; then
+    echo "Refusing to migrate a linked legacy skill directory: $legacy_path" >&2
+    exit 1
+  fi
+  if [ ! -e "$legacy_path" ]; then
+    return
+  fi
+  if [ ! -d "$legacy_path" ]; then
+    echo "Legacy skill path is not a directory: $legacy_path" >&2
+    exit 1
+  fi
+  if [ -e "$destination_path" ] || [ -L "$destination_path" ]; then
+    echo "Both legacy and current skill directories exist. Review them manually: $legacy_path and $destination_path" >&2
+    exit 1
+  fi
+  if [ "$force" -ne 1 ]; then
+    echo "Legacy skill found at $legacy_path. Re-run with --force to rename it to Luna Agent." >&2
+    exit 1
+  fi
+
+  mkdir -p "$skills_root_path"
+  skills_root_abs=$(CDPATH= cd -P -- "$skills_root_path" && pwd -P)
+  legacy_parent_abs=$(CDPATH= cd -P -- "$(dirname -- "$legacy_path")" && pwd -P)
+  destination_parent_abs=$(CDPATH= cd -P -- "$(dirname -- "$destination_path")" && pwd -P)
+  if [ "$skills_root_abs" = "/" ]; then
+    echo "Skills root must not be the filesystem root." >&2
+    exit 1
+  fi
+  if [ "$legacy_parent_abs" != "$skills_root_abs" ] || [ "$destination_parent_abs" != "$skills_root_abs" ]; then
+    echo "Skill migration paths must be direct children of $skills_root_abs" >&2
+    exit 1
+  fi
+
+  mv -- "$legacy_path" "$destination_path"
+  echo "Migrated skill: $legacy_path -> $destination_path"
+}
+
+skill_source="$project_root/.agents/skills/luna-agent"
+legacy_skill_destination="$skills_root_path/delegate-luna-workers"
+skill_destination="$skills_root_path/luna-agent"
+migrate_legacy_skill "$legacy_skill_destination" "$skill_destination"
+install_managed_file "$skill_source/SKILL.md" "$skill_destination/SKILL.md"
+install_managed_file "$skill_source/agents/openai.yaml" "$skill_destination/agents/openai.yaml"
+
 install_managed_file "$project_root/.codex/config.toml" "$codex_home_path/luna.config.toml"
 install_managed_file "$project_root/.codex/agents/luna-worker.toml" "$codex_home_path/agents/luna-worker.toml"
 install_managed_file "$project_root/.codex/agents/luna-low.toml" "$codex_home_path/agents/luna-low.toml"
 install_managed_file "$project_root/.codex/agents/luna-medium.toml" "$codex_home_path/agents/luna-medium.toml"
 install_managed_file "$project_root/.codex/agents/luna-high.toml" "$codex_home_path/agents/luna-high.toml"
 install_managed_file "$project_root/.codex/agents/luna-xhigh.toml" "$codex_home_path/agents/luna-xhigh.toml"
-install_managed_file "$project_root/.agents/skills/delegate-luna-workers/SKILL.md" "$skills_root_path/delegate-luna-workers/SKILL.md"
-install_managed_file "$project_root/.agents/skills/delegate-luna-workers/agents/openai.yaml" "$skills_root_path/delegate-luna-workers/agents/openai.yaml"
 install_managed_file "$project_root/src/luna_agent/__init__.py" "$runtime_path/src/luna_agent/__init__.py"
 install_managed_file "$project_root/src/luna_agent/__main__.py" "$runtime_path/src/luna_agent/__main__.py"
 install_managed_file "$project_root/src/luna_agent/cli.py" "$runtime_path/src/luna_agent/cli.py"

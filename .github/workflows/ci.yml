@@ -24,6 +24,23 @@ jobs:
       - run: sh -n scripts/check.sh
       - run: sh scripts/install.sh --skip-capability-check --codex-home "$RUNNER_TEMP/codex" --skills-root "$RUNNER_TEMP/skills"
       - run: sh scripts/install.sh --skip-capability-check --codex-home "$RUNNER_TEMP/codex" --skills-root "$RUNNER_TEMP/skills"
+      - name: Exercise legacy skill migration
+        run: |
+          legacy_skills="$RUNNER_TEMP/legacy-skills"
+          legacy_skill="$legacy_skills/delegate-luna-workers"
+          mkdir -p "$legacy_skill/agents"
+          cp .agents/skills/luna-agent/SKILL.md "$legacy_skill/SKILL.md"
+          cp .agents/skills/luna-agent/agents/openai.yaml "$legacy_skill/agents/openai.yaml"
+          sh scripts/install.sh --force --skip-capability-check --codex-home "$RUNNER_TEMP/legacy-codex" --skills-root "$legacy_skills"
+          test ! -e "$legacy_skill"
+          test -f "$legacy_skills/luna-agent/SKILL.md"
+          grep -q '^name: luna-agent$' "$legacy_skills/luna-agent/SKILL.md"
+          conflict_skills="$RUNNER_TEMP/conflict-skills"
+          mkdir -p "$conflict_skills/delegate-luna-workers" "$conflict_skills/luna-agent"
+          if sh scripts/install.sh --force --skip-capability-check --codex-home "$RUNNER_TEMP/conflict-codex" --skills-root "$conflict_skills"; then
+            echo "Installer accepted conflicting skill directories." >&2
+            exit 1
+          fi
 
   windows:
     runs-on: windows-latest
@@ -38,6 +55,31 @@ jobs:
         run: |
           ./scripts/install.ps1 -SkipCapabilityCheck -CodexHomePath "$env:RUNNER_TEMP/codex" -SkillsRootPath "$env:RUNNER_TEMP/skills"
           ./scripts/install.ps1 -SkipCapabilityCheck -CodexHomePath "$env:RUNNER_TEMP/codex" -SkillsRootPath "$env:RUNNER_TEMP/skills"
+      - name: Exercise legacy skill migration
+        shell: pwsh
+        run: |
+          $legacySkills = Join-Path $env:RUNNER_TEMP "legacy-skills"
+          $legacySkill = Join-Path $legacySkills "delegate-luna-workers"
+          New-Item -ItemType Directory -Path (Join-Path $legacySkill "agents") -Force | Out-Null
+          Copy-Item .agents/skills/luna-agent/SKILL.md (Join-Path $legacySkill "SKILL.md")
+          Copy-Item .agents/skills/luna-agent/agents/openai.yaml (Join-Path $legacySkill "agents/openai.yaml")
+          ./scripts/install.ps1 -Force -SkipCapabilityCheck -CodexHomePath "$env:RUNNER_TEMP/legacy-codex" -SkillsRootPath $legacySkills
+          if (Test-Path -LiteralPath $legacySkill) { throw "Legacy skill directory still exists." }
+          $installedSkill = Join-Path $legacySkills "luna-agent/SKILL.md"
+          if (-not (Test-Path -LiteralPath $installedSkill)) { throw "Luna Agent skill was not installed." }
+          if (-not (Select-String -LiteralPath $installedSkill -Pattern '^name: luna-agent$' -Quiet)) { throw "Installed skill name is incorrect." }
+          $conflictSkills = Join-Path $env:RUNNER_TEMP "conflict-skills"
+          New-Item -ItemType Directory -Path (Join-Path $conflictSkills "delegate-luna-workers") -Force | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $conflictSkills "luna-agent") -Force | Out-Null
+          $conflictRefused = $false
+          try {
+            ./scripts/install.ps1 -Force -SkipCapabilityCheck -CodexHomePath "$env:RUNNER_TEMP/conflict-codex" -SkillsRootPath $conflictSkills
+          }
+          catch {
+            if ($_.Exception.Message -notlike "Both legacy and current skill directories exist*") { throw }
+            $conflictRefused = $true
+          }
+          if (-not $conflictRefused) { throw "Installer accepted conflicting skill directories." }
       - name: Parse PowerShell scripts
         shell: pwsh
         run: |

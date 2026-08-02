@@ -1,0 +1,7 @@
+interface:
+  display_name: "Luna Agent"
+  short_description: "Run Luna workers with independent speed settings"
+  default_prompt: "Use $luna-agent with mode=isolated, agents=auto, effort=max, and speed=fast to delegate this task to Luna."
+
+policy:
+  allow_implicit_invocation: true

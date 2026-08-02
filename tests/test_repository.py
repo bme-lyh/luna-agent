@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENT_DIR = ROOT / ".codex" / "agents"
-SKILL_DIR = ROOT / ".agents" / "skills" / "delegate-luna-workers"
+SKILL_DIR = ROOT / ".agents" / "skills" / "luna-agent"
 SOURCE_DIR = ROOT / "src" / "luna_agent"
 
 
@@ -59,11 +59,19 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("`isolated`", skill)
         self.assertIn("`native`", skill)
         self.assertIn("codex exec", skill)
+        self.assertIn("name: luna-agent", skill)
         self.assertNotIn("dependencies:", metadata)
         self.assertNotIn("lunaAgentWorkers", skill + metadata)
-        self.assertIn("$delegate-luna-workers", metadata)
+        self.assertIn("$luna-agent", metadata)
+        self.assertNotIn("$delegate-luna-workers", skill + metadata)
+        self.assertIn('display_name: "Luna Agent"', metadata)
         self.assertIn("default to `auto`", skill)
         self.assertIn("agents=auto", metadata)
+
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("appear as **Luna Agent**", readme)
+        self.assertIn("`$luna-agent`", readme)
+        self.assertNotIn("$delegate-luna-workers", readme)
 
     def test_documentation_explains_auto_agent_selection(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -87,6 +95,8 @@ class RepositoryContractTests(unittest.TestCase):
             "runner.py",
         ):
             self.assertTrue((SOURCE_DIR / filename).is_file(), filename)
+        package_init = (SOURCE_DIR / "__init__.py").read_text(encoding="utf-8")
+        self.assertIn(f'__version__ = "{project["project"]["version"]}"', package_init)
 
     def test_obsolete_api_and_mcp_files_are_absent(self) -> None:
         obsolete = [
@@ -100,6 +110,16 @@ class RepositoryContractTests(unittest.TestCase):
         ]
         for relative_path in obsolete:
             self.assertFalse((ROOT / relative_path).exists(), relative_path)
+        self.assertFalse(
+            (ROOT / ".agents" / "skills" / "delegate-luna-workers").exists()
+        )
+
+    def test_installers_migrate_the_legacy_skill_name(self) -> None:
+        for relative_path in ("scripts/install.ps1", "scripts/install.sh"):
+            installer = (ROOT / relative_path).read_text(encoding="utf-8")
+            self.assertIn("delegate-luna-workers", installer)
+            self.assertIn("luna-agent", installer)
+            self.assertIn("Both legacy and current skill directories exist", installer)
 
 
 if __name__ == "__main__":

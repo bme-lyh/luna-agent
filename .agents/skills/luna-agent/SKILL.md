@@ -1,9 +1,9 @@
 ---
-name: delegate-luna-workers
+name: luna-agent
 description: Delegate one or more bounded tasks to GPT-5.6 Luna workers with explicit per-task reasoning effort and speed. Use when a user asks Codex to use Luna, Luna subagents, parallel Luna workers, a specific Luna effort (low, medium, high, xhigh, or max), or a specific speed (fast or standard).
 ---
 
-# Delegate Luna Workers
+# Luna Agent
 
 Use the Luna Agent runner for independently configurable worker speed. It launches isolated
 `codex exec` processes with the existing Codex login. Do not call an MCP server or the OpenAI
