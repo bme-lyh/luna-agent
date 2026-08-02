@@ -30,4 +30,6 @@ printf '%s' "$luna_catalog" | grep -q '"additional_speed_tiers":\["fast"\]' || {
 
 echo "Project configuration loaded by Codex."
 echo "gpt-5.6-luna supports reasoning effort max and Fast mode."
+"$script_dir/luna-agent.sh" doctor --skip-login
+echo "The isolated runner loaded successfully."
 echo "No model request was made."

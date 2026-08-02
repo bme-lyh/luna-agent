@@ -1,67 +1,100 @@
 # Architecture
 
-## Native request path
+## Isolated request path
 
 ```text
 Codex parent
   -> delegate-luna-workers skill
-  -> native spawn_agent orchestration
-  -> selected custom agent in .codex/agents or ~/.codex/agents
-  -> gpt-5.6-luna with an explicit effort preset
-  -> inherited parent tools, sandbox, approvals, and speed tier
-  -> native agent thread result
-  -> Codex parent consolidates and verifies
+  -> Luna Agent launcher
+  -> Python runner
+  -> one codex exec process per worker
+  -> gpt-5.6-luna with explicit effort and service tier
+  -> saved Codex authentication
+  -> JSONL events
+  -> validated worker result
+  -> Codex parent review and consolidation
 ```
 
-There is no secondary API client or service process. Authentication and usage are owned by the
-Codex host and the signed-in account.
+Each `codex exec` process is a separate Codex session. The runner sets
+`service_tier = "fast"` for Fast and `service_tier = "default"` for Standard. It also sets the
+model and reasoning effort on every launch. Parent speed and sibling speed have no effect on those
+values.
 
-## Configuration layers
+## Process boundary
 
-Repository use loads `.codex/config.toml` and `.codex/agents/*.toml`. Global installation copies
-the same defaults to `~/.codex/luna.config.toml`, custom agents to `~/.codex/agents/`, and the skill
-to `~/.agents/skills/`. Launching `codex -p luna` layers the Luna profile over the user's base
-configuration without modifying that base file.
+The runner uses `subprocess.run` with an argument array and sends the task through standard input.
+It never builds a shell command from task text. Every child launch:
 
-The profile enables native multi-agent tools, caps child concurrency at four, defaults spawned
-agents to `gpt-5.6-luna`, defaults effort to `max`, and enables Fast mode.
+- fixes the model to `gpt-5.6-luna`;
+- sets one of the five supported reasoning efforts;
+- sets Fast or Standard explicitly;
+- disables nested multi-agent tools;
+- runs without interactive approvals;
+- uses read-only or workspace-write sandboxing;
+- ignores unrelated user configuration while retaining Codex authentication;
+- removes `OPENAI_API_KEY` and `CODEX_API_KEY` from the child environment;
+- uses an ephemeral Codex session rollout.
 
-## Effort selection
+The target repository remains the child working directory, so its project instructions and files
+stay in scope.
 
-Custom-agent files make effort selection explicit and auditable:
+## Concurrency
 
-| Requested effort | Agent name |
-| --- | --- |
-| `low` | `luna_low` |
-| `medium` | `luna_medium` |
-| `high` | `luna_high` |
-| `xhigh` | `luna_xhigh` |
-| `max` | `luna_worker` |
+`batch` uses a bounded thread pool to supervise up to four child processes. Results are returned in
+manifest or command-line order even when workers finish in a different order. Job IDs must be
+unique.
 
-This avoids relying on an orchestrator to infer effort. The model remains fixed to
-`gpt-5.6-luna` in every preset.
+Parallel read-only work is safe for independent tasks. Workspace-write jobs need non-overlapping
+file ownership because separate Codex processes share the same working tree.
 
-## Speed selection
+## Result handling
 
-Speed belongs to the parent session and is inherited by spawned agents. The installed profile uses
-`service_tier = "fast"` with `features.fast_mode = true`. Use `/fast on`, `/fast off`, and
-`/fast status` for explicit session-level selection. The workflow never treats natural-language
-prompt text as proof that the speed tier changed.
+Codex emits newline-delimited JSON. The runner extracts:
 
-## Boundaries and failures
+- the Codex thread ID;
+- the last completed agent message;
+- token usage;
+- failure events;
+- process exit code and elapsed time.
 
-The host must expose native subagents and `gpt-5.6-luna` to the authenticated account. Configuration
-cannot bypass a client model allowlist, workspace policy, account entitlement, sandbox, or approval
-policy. The installer and check scripts inspect the bundled Codex model catalog without making a
-billable inference request and fail clearly when Luna, max reasoning, or Fast mode is unavailable.
+A job succeeds only when Codex exits with code zero and returns a final agent message. Timeouts,
+missing executables, malformed output, login errors, and model errors return structured failures.
+One failed batch job makes the batch command fail after all workers finish.
 
-Multiple agents share the workspace. Split tasks along independent boundaries, assign file
-ownership when workers may write, and let the parent resolve conflicting results. Child sessions
-inherit live parent runtime permission overrides.
+## Configuration and installation
 
-## Distribution choice
+The repository contains four layers:
 
-This repository is a native Codex configuration package, not an MCP server or a standalone plugin.
-Plugins can package skills, but they do not currently install project or user custom-agent TOML
-files. Keeping installation explicit prevents a plugin from appearing functional while its required
-agents are missing.
+1. `.codex/config.toml` supplies the optional `luna` profile and native multi-agent defaults.
+2. `.codex/agents/*.toml` defines native compatibility presets for each reasoning effort.
+3. `.agents/skills/delegate-luna-workers` teaches Codex how to choose isolated or native mode.
+4. `src/luna_agent` implements the isolated runner.
+
+The installer copies the profile to `~/.codex/luna.config.toml`, the native presets to
+`~/.codex/agents`, the skill to `~/.agents/skills`, and the runner to
+`~/.codex/luna-agent`. It lists every managed file and refuses to replace different files unless
+the user passes `-Force` or `--force`. It does not edit the base `~/.codex/config.toml` file.
+
+## Native compatibility path
+
+```text
+Codex parent
+  -> delegate-luna-workers skill with mode=native
+  -> native spawn_agent
+  -> selected custom Luna preset
+  -> inherited parent speed, sandbox, and approvals
+  -> native child thread result
+```
+
+Native mode preserves first-class child threads. It cannot set speed per child because the native
+spawn interface has no service-tier parameter.
+
+## Verification
+
+Offline tests check configuration contracts, command construction, API-key removal, JSONL parsing,
+failure handling, parameter validation, result ordering, and CLI defaults. `scripts/check.ps1` and
+`scripts/check.sh` inspect the bundled Codex model catalog without sending a model request.
+
+`verify-speeds` runs the same fixed prompt sequentially with Standard and Fast. It succeeds only
+when both runs use their configured tiers, exit normally, and return the exact marker. Elapsed time
+is recorded but is not a pass condition.

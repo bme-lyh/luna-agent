@@ -1,0 +1,5 @@
+.venv/**
+.install-test/**
+.install-sandbox/**
+.code-review-graph/**
+**/__pycache__/**

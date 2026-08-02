@@ -1,30 +1,22 @@
 # Luna Agent
 
-Luna Agent lets Codex split a task into smaller jobs and run them with GPT-5.6 Luna subagents.
-Your main Codex session stays in control, waits for the workers, and combines their results.
+Luna Agent lets Codex run GPT-5.6 Luna workers at different speeds. Each worker gets its own Codex
+session, so a Fast worker and a Standard worker can run at the same time even when the parent
+conversation uses another speed.
 
-It uses your existing Codex login. You do not need an API key, an MCP server, Docker, or a separate
+It uses your existing Codex login. You do not need an API key, MCP server, Docker container, or
 background service.
 
-## What you get
+## What you need
 
-- GPT-5.6 Luna subagents inside Codex
-- Up to four workers running at the same time
-- Five reasoning levels: low, medium, high, xhigh, and max
-- Fast mode enabled by default
-- Safe installers for Windows, macOS, and Linux
-
-## Before you start
-
-You need:
-
-- A recent version of Codex
-- A ChatGPT or Codex account with access to GPT-5.6 Luna
+- Codex CLI with access to `gpt-5.6-luna`
+- A ChatGPT account signed in through Codex
+- Python 3.11 or newer
 - PowerShell on Windows, or a terminal on macOS/Linux
 
 ## Install
 
-Download or clone this repository, open a terminal in the project folder, and run the installer.
+Download or clone this repository, open a terminal in the project folder, and run one command.
 
 Windows PowerShell:
 
@@ -38,62 +30,110 @@ macOS or Linux:
 ./scripts/install.sh
 ```
 
-Restart Codex or open a new conversation after installation.
+Restart Codex or open a new conversation when the installer finishes.
 
-## Start Codex
+The installer adds a `luna` profile, five native Luna presets, the delegation skill, and the
+isolated runner. It does not edit your main `~/.codex/config.toml` file.
 
-Open the project you want to work on, then run:
+## Use it in Codex
+
+Start Codex in the project you want to work on:
 
 ```bash
 codex -p luna
 ```
 
-The `luna` profile uses GPT-5.6 Luna for subagents, max reasoning, Fast mode, and a limit of four
-workers.
-
-## Run your first task
-
-Paste this into Codex:
+Then ask Codex to use the installed skill:
 
 ```text
-Use $delegate-luna-workers with effort=max, speed=fast, and agents=3 to review this project. Wait for every worker, then give me one clear summary.
+Use $delegate-luna-workers in isolated mode. Run two workers in parallel:
+- review the API with effort=max and speed=fast
+- review the documentation with effort=high and speed=standard
+Wait for both workers and give me one summary.
 ```
 
-Change the task at the end to match what you need. For example, you can ask the workers to review
-code, check documentation, investigate bugs, or compare several approaches.
+Isolated mode is the default. A worker's speed does not need to match the parent conversation or
+the other workers.
 
-## Choose the reasoning level
+## Available settings
 
-Set `effort` in your prompt:
+| Setting | Values | Default |
+| --- | --- | --- |
+| Mode | `isolated`, `native` | `isolated` |
+| Speed | `fast`, `standard` | `fast` |
+| Reasoning | `low`, `medium`, `high`, `xhigh`, `max` | `max` |
+| File access | `read-only`, `workspace-write` | `read-only` |
+| Parallel workers | 1 to 4 | 1 |
 
-| Effort | Best for |
-| --- | --- |
-| `low` | Short, simple tasks |
-| `medium` | Routine work that needs some planning |
-| `high` | Careful reviews and multi-step tasks |
-| `xhigh` | Difficult but focused work |
-| `max` | The deepest reasoning, used by default |
+Fast uses Codex Fast mode. Standard uses the normal service tier. Fast usually returns sooner but
+uses credits at a higher rate. See the [Codex speed documentation](https://learn.chatgpt.com/docs/agent-configuration/speed)
+for current usage details.
 
-Example:
+Use `workspace-write` only when you want a worker to edit files. When several workers can edit,
+give each worker separate files or directories.
 
-```text
-Use $delegate-luna-workers with effort=high and agents=2 to check these changes for bugs.
+## Run the worker tool directly
+
+The skill normally handles these commands for you. They are also useful for checks and scripts.
+
+Run one Fast worker on Windows:
+
+```powershell
+./scripts/luna-agent.ps1 run "Review this project for bugs." --speed fast --effort max --workspace .
 ```
 
-## Choose the speed
+Run one Standard worker on macOS or Linux:
 
-Fast mode is the default. In Codex CLI, use:
-
-```text
-/fast on       Turn on Fast mode
-/fast off      Use Standard mode
-/fast status   Show the current mode
+```bash
+./scripts/luna-agent.sh run "Review this project for bugs." --speed standard --effort max --workspace .
 ```
 
-In the Codex app or IDE extension, use the model and speed controls in the interface. Fast mode can
-use your credits faster than Standard mode.
+Run two workers with different speeds:
 
-## Check the installation
+```powershell
+./scripts/luna-agent.ps1 batch `
+  --task "Review the API." `
+  --task "Review the documentation." `
+  --speed fast `
+  --speed standard `
+  --effort max `
+  --effort high `
+  --max-workers 2 `
+  --workspace .
+```
+
+For complex batches, put the settings in a JSON manifest:
+
+```json
+{
+  "workspace": ".",
+  "max_workers": 2,
+  "jobs": [
+    {
+      "id": "api-review",
+      "task": "Review the API.",
+      "speed": "fast",
+      "effort": "max"
+    },
+    {
+      "id": "docs-review",
+      "task": "Review the documentation.",
+      "speed": "standard",
+      "effort": "high"
+    }
+  ]
+}
+```
+
+Run it with:
+
+```powershell
+./scripts/luna-agent.ps1 batch --manifest ./jobs.json
+```
+
+## Check the setup
+
+The regular check does not send a model request or consume model credits.
 
 Windows:
 
@@ -107,30 +147,55 @@ macOS or Linux:
 ./scripts/check.sh
 ```
 
-The check reads Codex's local model catalog. It does not send a model request or use paid API
-tokens.
+To test both speeds with the same small Luna task:
 
-## If something does not work
+```powershell
+./scripts/luna-agent.ps1 verify-speeds --workspace .
+```
 
-- Update Codex if the installer says GPT-5.6 Luna is unavailable.
-- Check that your account or workspace has access to GPT-5.6 Luna.
-- Restart Codex or open a new conversation if the custom agents do not appear.
-- Run the check script and read the error message before reinstalling.
+`verify-speeds` makes one Standard request and one Fast request. Both requests use credits. The
+command verifies the selected service tiers and output, then reports elapsed time. It does not
+require Fast to beat Standard by a fixed ratio because service load varies.
 
-The installer does not change your main `~/.codex/config.toml` file. It creates a separate
-`luna.config.toml` profile and refuses to replace different files unless you explicitly use
-`-Force` or `--force`.
+## Native compatibility mode
 
-## For contributors
+Native mode uses Codex's built-in `spawn_agent` tool and the installed Luna presets. It keeps native
+thread integration, but every native worker inherits the parent conversation's speed.
 
-Run the project tests with Python 3.11 or newer:
+Use native mode only when that behavior is useful:
+
+```text
+Use $delegate-luna-workers with mode=native, effort=max, speed=fast, and agents=2.
+```
+
+## How isolation works
+
+The runner starts `codex exec` with an argument list rather than a shell command. It fixes the model
+to GPT-5.6 Luna, passes the task through standard input, disables nested agents, and sets the speed
+and reasoning effort for that worker. It ignores unrelated user configuration but keeps saved Codex
+authentication. API-key environment variables are removed before the child starts.
+
+Workers use read-only file access unless you explicitly select `workspace-write`.
+
+## Troubleshooting
+
+- Run `codex login status` if the worker says Codex is not logged in.
+- Run `./scripts/check.ps1` or `./scripts/check.sh` to check Luna support.
+- Update Codex if `gpt-5.6-luna`, `max`, or Fast mode is missing.
+- Restart Codex after installation so it can load the skill and agent presets.
+- If the runner needs network or saved-login access from a restricted parent sandbox, approve the
+  narrowly scoped launcher command when Codex asks.
+
+## Development
+
+Run the unit tests with Python 3.11 or newer:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-See [architecture](docs/architecture.md) for implementation details and [security](SECURITY.md) for
-the permission model.
+See [docs/architecture.md](docs/architecture.md) for implementation details and
+[SECURITY.md](SECURITY.md) for the permission model.
 
 ## License
 
