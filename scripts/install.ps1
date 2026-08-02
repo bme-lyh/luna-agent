@@ -2,7 +2,6 @@
 param(
     [string]$CodexHomePath = "",
     [string]$SkillsRootPath = "",
-    [string]$RuntimePath = "",
     [switch]$Force,
     [switch]$SkipCapabilityCheck
 )
@@ -40,40 +39,9 @@ if ([string]::IsNullOrWhiteSpace($CodexHomePath)) {
 if ([string]::IsNullOrWhiteSpace($SkillsRootPath)) {
     $SkillsRootPath = Join-Path $env:USERPROFILE ".agents\skills"
 }
-if ([string]::IsNullOrWhiteSpace($RuntimePath)) {
-    $RuntimePath = Join-Path $CodexHomePath "luna-agent"
-}
-
-$pythonAvailable = $false
-$pythonLauncher = Get-Command py -ErrorAction SilentlyContinue
-if ($pythonLauncher) {
-    & $pythonLauncher.Source -3 -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
-    $pythonAvailable = $LASTEXITCODE -eq 0
-}
-if (-not $pythonAvailable) {
-    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
-    if ($pythonCommand) {
-        & $pythonCommand.Source -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
-        $pythonAvailable = $LASTEXITCODE -eq 0
-    }
-}
-if (-not $pythonAvailable) {
-    throw "Python 3.11 or newer is required for isolated Luna workers."
-}
-
 if (-not $SkipCapabilityCheck) {
     if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
         throw "codex was not found on PATH. Install or update Codex before installing Luna Agent."
-    }
-    $execResult = Invoke-CodexCaptured -Arguments @("exec", "--help")
-    if ($execResult.ExitCode -ne 0) {
-        throw "Could not inspect codex exec capabilities."
-    }
-    $execHelp = $execResult.Lines -join "`n"
-    foreach ($requiredFlag in @("--ignore-user-config", "--ephemeral", "--json")) {
-        if (-not $execHelp.Contains($requiredFlag)) {
-            throw "This Codex version is too old for isolated Luna workers. Update Codex first."
-        }
     }
     $catalogResult = Invoke-CodexCaptured -Arguments @("debug", "models", "--bundled")
     if ($catalogResult.ExitCode -ne 0) {
@@ -90,11 +58,10 @@ if (-not $SkipCapabilityCheck) {
     if (-not $luna) {
         throw "This Codex installation does not expose gpt-5.6-luna. Update Codex or check workspace model availability."
     }
-    if ($luna.supported_reasoning_levels.effort -notcontains "max") {
-        throw "The installed Luna model catalog does not support reasoning effort max."
-    }
-    if ($luna.additional_speed_tiers -notcontains "fast") {
-        throw "The installed Luna model catalog does not support Fast mode."
+    foreach ($effort in @("low", "medium", "high", "xhigh", "max")) {
+        if ($luna.supported_reasoning_levels.effort -notcontains $effort) {
+            throw "The installed Luna model catalog does not support reasoning effort '$effort'."
+        }
     }
 }
 
@@ -198,21 +165,6 @@ foreach ($agentFile in $agentFiles) {
         -Destination (Join-Path $CodexHomePath "agents\$agentFile")
 }
 
-$runtimeFiles = @(
-    "src\luna_agent\__init__.py",
-    "src\luna_agent\__main__.py",
-    "src\luna_agent\cli.py",
-    "src\luna_agent\models.py",
-    "src\luna_agent\runner.py",
-    "scripts\luna-agent.ps1",
-    "scripts\luna-agent.sh"
-)
-foreach ($runtimeFile in $runtimeFiles) {
-    Install-ManagedFile `
-        -Source (Join-Path $projectRoot $runtimeFile) `
-        -Destination (Join-Path $RuntimePath $runtimeFile)
-}
-
 Write-Host "Luna Agent is installed. Restart Codex or open a new thread."
 Write-Host "Launch it from a target repository with: codex -p luna"
-Write-Host "Check isolated workers with: $RuntimePath\scripts\luna-agent.ps1 doctor"
+Write-Host "Invoke the Skill with: `$luna-agent"

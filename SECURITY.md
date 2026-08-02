@@ -12,25 +12,15 @@ contact to this file.
 
 ## Deployment boundary
 
-This project starts no background service and stores no API key. Isolated workers reuse the saved
-Codex CLI login. The runner removes `OPENAI_API_KEY` and `CODEX_API_KEY` from every child process so
-an inherited API key cannot silently change the billing path.
+This project starts no background service, stores no API key, and launches no external worker
+process. It configures Codex's native subagents to use GPT-5.6 Luna at a selected reasoning effort.
 
-Task text is sent to `codex exec` through standard input. The runner passes command arguments as a
-list and does not interpolate task text into a shell command. Nested multi-agent execution is
-disabled in each child.
-
-Isolated workers use read-only access by default. `workspace-write` allows a child to edit the
-selected repository without interactive approval. Review the task before granting that access and
-assign non-overlapping file ownership to concurrent workers.
-
-Native Luna agents still inherit the parent session's live sandbox, approval policy, and speed.
-Review those settings before native delegation.
+Native Luna agents inherit the parent session's live sandbox, approval policy, configuration,
+tools, context, and service tier. Review the parent settings before delegation and assign
+non-overlapping file ownership to concurrent write workers.
 
 The installer writes only explicitly listed files. It refuses to replace different existing files
 unless the user supplies `-Force` or `--force`, and it never edits the user's base
 `~/.codex/config.toml`.
 
-The isolated runner ignores the user's regular Codex configuration so unrelated MCP servers, hooks,
-and stale settings cannot affect a child. Codex authentication remains available. The target
-repository's own instructions and content are still untrusted input to the worker.
+The target repository's instructions and content remain untrusted input to every native worker.

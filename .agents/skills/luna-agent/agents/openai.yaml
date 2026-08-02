@@ -1,7 +1,7 @@
 interface:
   display_name: "Luna Agent"
-  short_description: "Run Luna workers with independent speed settings"
-  default_prompt: "Use $luna-agent with mode=isolated, agents=auto, effort=max, and speed=fast to delegate this task to Luna."
+  short_description: "Run native GPT-5.6 Luna subagents"
+  default_prompt: "Use $luna-agent with agents=auto and effort=max to delegate this task to native Luna subagents."
 
 policy:
   allow_implicit_invocation: true

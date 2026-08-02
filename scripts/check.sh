@@ -19,17 +19,14 @@ case "$catalog" in
 esac
 luna_catalog=${catalog#*\"slug\":\"gpt-5.6-luna\"}
 luna_catalog=${luna_catalog%%\},\{\"slug\":*}
-printf '%s' "$luna_catalog" | grep -q '"effort":"max"' || {
-  echo "The bundled Luna model does not advertise reasoning effort max." >&2
-  exit 1
-}
-printf '%s' "$luna_catalog" | grep -q '"additional_speed_tiers":\["fast"\]' || {
-  echo "The bundled Luna model does not advertise Fast mode." >&2
-  exit 1
-}
+for effort in low medium high xhigh max; do
+  printf '%s' "$luna_catalog" | grep -q "\"effort\":\"$effort\"" || {
+    echo "The bundled Luna model does not advertise reasoning effort '$effort'." >&2
+    exit 1
+  }
+done
 
 echo "Project configuration loaded by Codex."
-echo "gpt-5.6-luna supports reasoning effort max and Fast mode."
-"$script_dir/luna-agent.sh" doctor --skip-login
-echo "The isolated runner loaded successfully."
+echo "gpt-5.6-luna supports low, medium, high, xhigh, and max reasoning."
+echo "Native Luna Agent configuration is ready."
 echo "No model request was made."

@@ -49,17 +49,7 @@ foreach ($effort in $expectedEfforts) {
         throw "gpt-5.6-luna does not advertise reasoning effort '$effort'."
     }
 }
-if ($luna.additional_speed_tiers -notcontains "fast") {
-    throw "gpt-5.6-luna does not advertise Fast mode."
-}
-
 Write-Host "Project configuration loaded by Codex."
-Write-Host "gpt-5.6-luna supports low, medium, high, xhigh, max, and fast."
-
-& (Join-Path $PSScriptRoot "luna-agent.ps1") doctor --skip-login
-if ($LASTEXITCODE -ne 0) {
-    throw "The isolated Luna runner failed its local capability check."
-}
-
-Write-Host "The isolated runner loaded successfully."
+Write-Host "gpt-5.6-luna supports low, medium, high, xhigh, and max reasoning."
+Write-Host "Native Luna Agent configuration is ready."
 Write-Host "No model request was made."

@@ -2,7 +2,6 @@ name = "luna_medium"
 description = "Balanced GPT-5.6 Luna worker for focused tasks that need moderate planning. Uses medium reasoning."
 model = "gpt-5.6-luna"
 model_reasoning_effort = "medium"
-sandbox_mode = "workspace-write"
 developer_instructions = """
 Complete the bounded task delegated by the parent agent.
 Gather the minimum relevant evidence, perform requested changes carefully, validate the result, and return a concise summary.

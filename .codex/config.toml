@@ -1,9 +1,7 @@
-# Native compatibility defaults. The installer copies this file to ~/.codex/luna.config.toml.
-# Isolated workers override their own model, effort, and service tier per process.
-service_tier = "fast"
+# Native Luna Agent defaults. The installer copies this file to ~/.codex/luna.config.toml.
+# Workers inherit the parent conversation's service tier and other live settings.
 
 [features]
-fast_mode = true
 multi_agent = true
 
 [agents]
