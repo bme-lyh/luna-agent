@@ -16,6 +16,17 @@ The custom agent preset fixes only `gpt-5.6-luna`, the reasoning effort, and rol
 Codex supplies the child thread relationship and inherits all omitted session settings from the
 parent. Live parent sandbox and approval overrides remain authoritative.
 
+## Invocation
+
+The Skill is eligible for implicit invocation, but eligibility does not force delegation. It runs
+implicitly only for a current actionable request with at least two ready independent workstreams
+where concurrency adds value. A direct request to use Luna or parallel agents is also eligible.
+`$luna-agent` remains the explicit override.
+
+The trigger excludes trivial, sequential, and non-parallelizable work; unsafe overlapping writes;
+incidental or quoted model references; setup, capability, or pricing questions; and user opt-outs.
+When ownership or benefit is uncertain, the parent works without Luna delegation.
+
 ## Concurrency
 
 The skill defaults to `agents=auto`. `agents` is a per-wave concurrency ceiling, not a cumulative
@@ -62,7 +73,7 @@ managed files without the force option and does not edit the base `~/.codex/conf
 
 ## Verification
 
-Offline tests check the profile, native presets, compact Skill contract, multi-wave state machine,
-installers, and absence of obsolete runtime files. `scripts/check.ps1` and `scripts/check.sh`
+Offline tests check the profile, native presets, compact implicit-trigger contract, multi-wave state
+machine, installers, and absence of obsolete runtime files. `scripts/check.ps1` and `scripts/check.sh`
 inspect the bundled Codex model catalog without sending a model request. Live forward tests remain
 explicit because they send real native model requests.

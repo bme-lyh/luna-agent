@@ -1,11 +1,8 @@
 # Luna Agent
 
-Luna Agent adds native GPT-5.6 Luna subagents to Codex. They appear in Codex's subagent interface,
-share the parent conversation's context and tools, and return their results directly to the main
-agent.
-
-It uses your existing Codex login and native multi-agent support. You do not need an API key, MCP
-server, Docker container, background service, or separate worker runtime.
+Use native GPT-5.6 Luna workers inside Codex. Codex delegates independent work, checks the results,
+and returns one answer. The project uses your Codex login. It needs no API key, MCP server, Docker
+container, or background service.
 
 ## What you need
 
@@ -15,7 +12,7 @@ server, Docker container, background service, or separate worker runtime.
 
 ## Install
 
-Download or clone this repository, open a terminal in the project folder, and run one command.
+From this repository, run one command.
 
 Windows PowerShell:
 
@@ -31,17 +28,10 @@ macOS or Linux:
 
 Restart Codex or open a new conversation when the installer finishes.
 
-The installer adds a `luna` profile, five native Luna presets, and the `luna-agent` skill. It does
-not edit your main `~/.codex/config.toml` file.
+The installer adds the `luna` profile, five Luna presets, and the global Skill. It does not edit
+`~/.codex/config.toml`. In Codex, the project and Skill appear as **Luna Agent**.
 
-In Codex, both the project and the skill appear as **Luna Agent**. Invoke the skill as
-`$luna-agent`. Explicit invocation keeps the Skill body out of unrelated conversations.
-
-When upgrading from version 0.3 or earlier, add `-Force` on Windows or `--force` on macOS/Linux.
-The installer then renames the old `delegate-luna-workers` directory to `luna-agent` instead of
-deleting its contents.
-
-## Use it in Codex
+## Use
 
 Start Codex in the project you want to work on:
 
@@ -49,37 +39,41 @@ Start Codex in the project you want to work on:
 codex -p luna
 ```
 
-Then ask Codex to use the installed skill:
+For a complex task with independent workstreams, Codex can invoke Luna Agent automatically. It
+does not trigger for simple or sequential tasks, incidental model discussion, setup questions, or
+when you ask Codex not to use agents.
+
+To invoke it directly, use the Skill name `$luna-agent`:
 
 ```text
 Use $luna-agent with agents=auto and effort=max.
-Delegate this task to as many independent Luna workers as are useful, then give me one summary.
+Delegate the independent parts of this task, then give me one summary.
 ```
 
-Workers use Codex's native child threads and inherit the parent conversation's service tier,
-permissions, approvals, configuration, and tools.
+Defaults are `effort=max` and `agents=auto`. You can choose `low`, `medium`, `high`, or `xhigh`, and
+set `agents` from `1` to `4`. The agent count is the limit for one wave. Workers inherit the parent
+session's context, tools, permissions, approvals, configuration, and service tier.
 
-## Available settings
+```mermaid
+flowchart LR
+  A[Your task] --> B[Codex finds independent work]
+  B --> C[Luna workers run]
+  C --> D[Codex checks results]
+  D --> E{More work?}
+  E -->|Yes| B
+  E -->|No| F[One final answer]
+```
+
+## Settings
 
 | Setting | Values | Default |
 | --- | --- | --- |
 | Reasoning | `low`, `medium`, `high`, `xhigh`, `max` | `max` |
-| Agents per wave | `auto`, 1 to 4 | `auto` |
+| Agents per wave | `auto`, `1` to `4` | `auto` |
 
-With `agents=auto`, Codex uses one worker for one bounded task and one per ready independent task,
-up to the configured limit and currently free slots. An explicit number is a per-wave upper bound;
-Codex queues excess work instead of duplicating tasks or exceeding capacity.
+## Check and upgrade
 
-When several workers can edit files, give each worker separate files or directories.
-
-The parent may run several waves for the same objective. Each worker gets a stable, task-derived
-`snake_case` name used throughout its lineage and result records. The parent launches only ready
-tasks, validates each result, then unlocks the next wave. It reuses an idle worker only for the
-same task lineage and stops when the objective is done or no safe progress remains.
-
-## Check the setup
-
-The check validates the installed Codex model catalog without sending a model request.
+Run the local check:
 
 Windows:
 
@@ -93,33 +87,15 @@ macOS or Linux:
 ./scripts/check.sh
 ```
 
-## How it works
+The check reads Codex's local model catalog and does not send a model request. If it fails, run
+`codex login status`, update Codex if Luna or an effort is missing, and restart Codex.
 
-The Skill maps reasoning effort to one of five Luna presets. The root parent maintains a finite
-task plan, schedules dependency-ordered native child-agent waves, applies capacity and write-scope
-guards, validates concise results, and performs the final checks. Child workers never delegate.
-
-## Troubleshooting
-
-- Run `codex login status` if Codex is not logged in.
-- Run `./scripts/check.ps1` or `./scripts/check.sh` to check Luna support.
-- Update Codex if `gpt-5.6-luna` or a required reasoning effort is missing.
-- Restart Codex after installation so it can load the skill and agent presets.
+When upgrading from version 0.3 or earlier, add `-Force` on Windows or `--force` on macOS/Linux.
+The installer renames the old `delegate-luna-workers` directory without deleting its contents. If
+both old and current directories exist, it stops for manual review.
 
 Versions 0.4 and earlier may have installed an unused runtime at `~/.codex/luna-agent`. The native
 Skill does not call it; it can be removed after upgrading.
 
-## Development
-
-Development checks use Python 3.11 or newer:
-
-```bash
-python -m unittest discover -s tests -v
-```
-
-See [docs/architecture.md](docs/architecture.md) for implementation details and
-[SECURITY.md](SECURITY.md) for the permission model.
-
-## License
-
-MIT
+For implementation details, see [Architecture](docs/architecture.md). For the permission model,
+see [Security](SECURITY.md). Licensed under MIT.

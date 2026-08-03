@@ -13,7 +13,9 @@
   stable for lineage and result correlation and never reuse it for another objective.
 - Native workers must inherit the parent session's sandbox, approvals, configuration, tools, and
   context. Agent presets should set only their role, model, reasoning effort, and instructions.
-- Keep the injected Skill concise: at most 90 lines and 500 whitespace-delimited words. Put
+- Keep implicit invocation narrow: require ready independent work or a direct operational request;
+  exclude trivial/sequential work, incidental model discussion, setup questions, and user opt-outs.
+- Keep the injected Skill concise: at most 75 lines and 450 whitespace-delimited words. Put
   installation and architecture details in repository documentation instead.
 - Installers must not edit a user's base `config.toml`; install `luna.config.toml` separately.
 - Run `python -m unittest discover -s tests -v`, `scripts/check.ps1` on Windows, and

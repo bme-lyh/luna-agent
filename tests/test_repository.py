@@ -74,8 +74,19 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn('display_name: "Luna Agent"', metadata)
         self.assertIn("default to `auto`", skill)
         self.assertIn("agents=auto", metadata)
-        self.assertIn("allow_implicit_invocation: false", metadata)
-        self.assertIn("Use only when the user explicitly invokes $luna-agent", skill)
+        self.assertIn("allow_implicit_invocation: true", metadata)
+        description = skill.split("---", 2)[1]
+        for trigger in (
+            "current complex objective",
+            "at least two ready independent workstreams",
+            "parallel workers materially help",
+            "Do not use implicitly for trivial, sequential, or non-parallelizable work",
+            "incidental or quoted Luna/model discussion",
+            "setup or capability questions",
+            "when the user asks not to use agents",
+        ):
+            self.assertIn(trigger, description)
+        self.assertNotIn("Use only when the user explicitly invokes", skill)
         self.assertIn("Reject invalid or mixed per-task values", skill)
 
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -86,7 +97,9 @@ class RepositoryContractTests(unittest.TestCase):
     def test_documentation_explains_auto_agent_selection(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         architecture = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
-        self.assertIn("| Agents per wave | `auto`, 1 to 4 | `auto` |", readme)
+        self.assertIn("| Agents per wave | `auto`, `1` to `4` | `auto` |", readme)
+        self.assertIn("invoke Luna Agent automatically", readme)
+        self.assertIn("does not trigger for simple or sequential tasks", readme)
         self.assertIn("defaults to `agents=auto`", architecture)
         self.assertIn("per-wave concurrency ceiling", architecture)
         self.assertIn("currently free native slots", architecture)
@@ -121,8 +134,8 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_skill_stays_context_efficient(self) -> None:
         skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
-        self.assertLessEqual(len(skill.splitlines()), 90)
-        self.assertLessEqual(len(skill.split()), 500)
+        self.assertLessEqual(len(skill.splitlines()), 75)
+        self.assertLessEqual(len(skill.split()), 450)
 
     def test_obsolete_runtime_api_and_mcp_files_are_absent(self) -> None:
         obsolete = [
