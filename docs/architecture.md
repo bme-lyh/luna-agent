@@ -23,9 +23,11 @@ worker count. The root parent launches the minimum of ready tasks, the requested
 the currently free native slots. Excess ready tasks remain queued and fill slots as workers finish.
 It never creates duplicate work to fill capacity.
 
-The parent owns dependency ordering and launches successors only after prerequisites pass. It may
-reuse an idle worker through `followup_task` for the same task lineage; unrelated work gets a new
-worker. Results may finish in any order and are correlated by task label before consolidation.
+The parent gives every task a unique, concise `snake_case` `task_name` derived from its objective,
+passes it to `spawn_agent`, and keeps it stable for lineage and result correlation. It never reuses
+that name for another objective. The parent owns dependency ordering and launches successors only
+after prerequisites pass. It may reuse an idle worker through `followup_task` for the same lineage;
+unrelated work gets a new worker. Results may finish in any order.
 
 Parallel read-only work is safe for independent tasks. Workspace-write jobs need non-overlapping
 file ownership because native child agents share the same working tree.

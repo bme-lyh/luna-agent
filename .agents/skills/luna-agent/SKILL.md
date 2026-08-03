@@ -21,9 +21,11 @@ to the configured limit and currently free slots. Never create filler work.
 
 ## Workflow
 
-1. Create a finite labeled task plan for the current objective. Record dependencies and write
-   ownership. Give every worker an objective, scope, acceptance check, stop condition, and finite
-   budget: one initial attempt plus at most one retry or follow-up.
+1. Create a finite labeled task plan. Derive each task's unique, concise `snake_case` `task_name`
+   from its objective; pass it to `spawn_agent`, keep it stable for lineage/result correlation, and
+   never reuse it for another objective. Record dependencies and write ownership. Give every worker
+   an objective, scope, acceptance check, stop condition, and finite budget: one initial attempt
+   plus at most one retry or follow-up.
 2. Before each wave, use `list_agents` to inspect live capacity. Dispatch ready independent tasks up to
    `min(ready tasks, agents ceiling, 4, free slots)` and queue the rest. Use `spawn_agent` for new
    work; use `followup_task` only for the same idle worker and task lineage.

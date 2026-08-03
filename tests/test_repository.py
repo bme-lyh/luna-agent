@@ -96,6 +96,10 @@ class RepositoryContractTests(unittest.TestCase):
         normalized_skill = " ".join(skill.split())
         required_contracts = (
             "finite labeled task plan",
+            "unique, concise `snake_case` `task_name`",
+            "pass it to `spawn_agent`",
+            "keep it stable for lineage/result correlation",
+            "never reuse it for another objective",
             "task lineage",
             "Workers must not spawn or delegate",
             "done`, `blocked`, or `failed",
@@ -110,6 +114,10 @@ class RepositoryContractTests(unittest.TestCase):
         )
         for contract in required_contracts:
             self.assertIn(contract, normalized_skill)
+
+        architecture = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+        self.assertIn("unique, concise `snake_case` `task_name`", architecture)
+        self.assertIn("passes it to `spawn_agent`", architecture)
 
     def test_skill_stays_context_efficient(self) -> None:
         skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")

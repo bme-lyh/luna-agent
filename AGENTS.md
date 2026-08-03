@@ -9,6 +9,8 @@
   maximum of four concurrent workers unless a change is explicitly requested.
 - Keep orchestration finite and parent-owned: dependency-ordered waves, live-slot backpressure,
   same-lineage worker reuse, explicit DONE/BLOCKED termination, and no child delegation.
+- Give every spawned task a unique, concise, objective-derived `snake_case` `task_name`; keep it
+  stable for lineage and result correlation and never reuse it for another objective.
 - Native workers must inherit the parent session's sandbox, approvals, configuration, tools, and
   context. Agent presets should set only their role, model, reasoning effort, and instructions.
 - Keep the injected Skill concise: at most 90 lines and 500 whitespace-delimited words. Put

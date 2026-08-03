@@ -72,8 +72,9 @@ Codex queues excess work instead of duplicating tasks or exceeding capacity.
 
 When several workers can edit files, give each worker separate files or directories.
 
-The parent may run several waves for the same objective. It launches only tasks whose dependencies
-are ready, validates each result, then unlocks the next wave. It reuses an idle worker only for the
+The parent may run several waves for the same objective. Each worker gets a stable, task-derived
+`snake_case` name used throughout its lineage and result records. The parent launches only ready
+tasks, validates each result, then unlocks the next wave. It reuses an idle worker only for the
 same task lineage and stops when the objective is done or no safe progress remains.
 
 ## Check the setup
