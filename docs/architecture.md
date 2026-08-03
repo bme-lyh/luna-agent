@@ -5,11 +5,11 @@
 ```text
 Codex parent
   -> luna-agent skill
-  -> native spawn_agent
-  -> selected Luna effort preset
-  -> native child thread
+  -> finite labeled task plan
+  -> ready native Luna child-agent wave
   -> inherited parent context, tools, permissions, and service tier
-  -> Codex parent review and consolidation
+  -> parent validation and dependency update
+  -> repeat ready waves until DONE or BLOCKED
 ```
 
 The custom agent preset fixes only `gpt-5.6-luna`, the reasoning effort, and role instructions.
@@ -18,16 +18,30 @@ parent. Live parent sandbox and approval overrides remain authoritative.
 
 ## Concurrency
 
-The skill defaults to `agents=auto`. The parent identifies independent bounded objectives and uses
-the smallest useful worker count: one for a single or sequential objective, otherwise one per
-independent objective up to four. It does not create duplicate work to fill available slots. An
-explicit agent count is treated as an upper bound when fewer safe task boundaries exist.
+The skill defaults to `agents=auto`. `agents` is a per-wave concurrency ceiling, not a cumulative
+worker count. The root parent launches the minimum of ready tasks, the requested ceiling, four, and
+the currently free native slots. Excess ready tasks remain queued and fill slots as workers finish.
+It never creates duplicate work to fill capacity.
 
-Codex's native multi-agent runtime supervises up to four child threads. Results may finish in any
-order; the parent waits for the requested workers and consolidates their findings.
+The parent owns dependency ordering and launches successors only after prerequisites pass. It may
+reuse an idle worker through `followup_task` for the same task lineage; unrelated work gets a new
+worker. Results may finish in any order and are correlated by task label before consolidation.
 
 Parallel read-only work is safe for independent tasks. Workspace-write jobs need non-overlapping
 file ownership because native child agents share the same working tree.
+
+## Completion and failure
+
+Every task declares an objective, scope, acceptance check, and stop condition. Workers return a
+concise `done`, `blocked`, or `failed` result with changed paths, checks, and residual risks. The
+parent retries a safe transient pre-start failure at most once. If writes might have started, it
+inspects state before any idempotent continuation. Each task gets one initial attempt plus at most
+one retry or follow-up. After a bounded wait and one no-progress check, the parent interrupts a
+stalled worker and records it as failed. Workers cannot recursively delegate.
+
+After each wave, the parent validates evidence and replans only within the original objective. Each
+wave must close or advance a planned task. The parent enters `DONE` after final checks pass and
+`BLOCKED` when dependencies fail, no task can progress, or a task budget is exhausted.
 
 ## Configuration and installation
 
@@ -46,6 +60,7 @@ managed files without the force option and does not edit the base `~/.codex/conf
 
 ## Verification
 
-Offline tests check the profile, native presets, Skill contract, installers, and absence of obsolete
-runtime files. `scripts/check.ps1` and `scripts/check.sh` inspect the bundled Codex model catalog
-without sending a model request.
+Offline tests check the profile, native presets, compact Skill contract, multi-wave state machine,
+installers, and absence of obsolete runtime files. `scripts/check.ps1` and `scripts/check.sh`
+inspect the bundled Codex model catalog without sending a model request. Live forward tests remain
+explicit because they send real native model requests.

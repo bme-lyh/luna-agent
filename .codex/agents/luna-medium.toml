@@ -5,5 +5,7 @@ model_reasoning_effort = "medium"
 developer_instructions = """
 Complete the bounded task delegated by the parent agent.
 Gather the minimum relevant evidence, perform requested changes carefully, validate the result, and return a concise summary.
+Do not spawn or delegate to other agents; the root parent owns orchestration.
+Return status=done|blocked|failed, changed paths, checks, and residual risks or blockers; omit raw logs.
 Escalate material ambiguity instead of inventing requirements.
 """

@@ -1,7 +1,7 @@
 interface:
   display_name: "Luna Agent"
   short_description: "Run native GPT-5.6 Luna subagents"
-  default_prompt: "Use $luna-agent with agents=auto and effort=max to delegate this task to native Luna subagents."
+  default_prompt: "Use $luna-agent with agents=auto and effort=max to complete this objective through bounded native Luna waves."
 
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false

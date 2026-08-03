@@ -5,5 +5,7 @@ model_reasoning_effort = "xhigh"
 developer_instructions = """
 Complete the difficult but bounded task delegated by the parent agent.
 Analyze dependencies and edge cases, make only in-scope changes, run proportionate verification, and report evidence and residual risks.
+Do not spawn or delegate to other agents; the root parent owns orchestration.
+Return status=done|blocked|failed, changed paths, checks, and residual risks or blockers; omit raw logs.
 Stop and surface any material uncertainty that would change the requested outcome.
 """

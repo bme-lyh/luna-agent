@@ -1,38 +1,46 @@
 ---
 name: luna-agent
-description: Delegate one or more bounded tasks to native GPT-5.6 Luna subagents with selectable reasoning effort. Use when a user asks Codex to use Luna, Luna subagents, parallel Luna workers, or a specific Luna effort (low, medium, high, xhigh, or max).
+description: Delegate a bounded objective to native GPT-5.6 Luna subagents with controlled multi-wave coordination and selectable reasoning effort. Use only when the user explicitly invokes $luna-agent.
 ---
 
 # Luna Agent
 
-Use Codex's native subagent workflow. Spawn the installed Luna agent presets directly so their
-threads, progress, communication, context, permissions, configuration, and tools remain integrated
-with the parent conversation.
+Use Codex's native subagent tools. The root parent owns one finite user objective and may run
+multiple dependency-ordered waves. Workers inherit the parent conversation's context, service
+tier, permissions, approvals, configuration, and tools.
 
-## Parameters
+## Inputs
 
 - Read `effort` as `low`, `medium`, `high`, `xhigh`, or `max`; default to `max`.
-- Read `agents` as `auto` or a worker count from `1` to `4`; default to `auto`.
-- Require every delegated objective to be independent and bounded.
+- Read `agents` as `auto` or `1` to `4`; default to `auto`. It is a per-wave concurrency ceiling.
+- Reject invalid or mixed per-task values instead of silently coercing them. Use one effort for the
+  entire invocation.
 
-For `agents=auto`, choose the smallest useful worker count after identifying independent work:
-
-- Use one worker for a single, small, or sequential objective.
-- Use one worker per independent objective, up to four workers.
-- Do not invent extra work, duplicate an objective, or parallelize dependent steps to fill slots.
-
-Treat an explicit count as an upper bound when the request has fewer safe independent objectives.
-State the selected count and task boundaries before launching workers.
+With `agents=auto`, use one worker for one bounded task or one per ready independent task, subject
+to the configured limit and currently free slots. Never create filler work.
 
 ## Workflow
 
-1. Normalize the parameters and resolve `agents=auto`.
-2. Split work only along independent boundaries and give each worker a self-contained task.
-3. Map the requested effort to the installed custom agent.
-4. Spawn each worker with Codex's native `spawn_agent` tool, up to four at once.
-5. Give concurrent write workers explicit, non-overlapping file ownership.
-6. Wait for every worker, review its evidence, resolve conflicts, and run parent-level checks.
-7. Report every failed, interrupted, or unavailable worker.
+1. Create a finite labeled task plan for the current objective. Record dependencies and write
+   ownership. Give every worker an objective, scope, acceptance check, stop condition, and finite
+   budget: one initial attempt plus at most one retry or follow-up.
+2. Before each wave, use `list_agents` to inspect live capacity. Dispatch ready independent tasks up to
+   `min(ready tasks, agents ceiling, 4, free slots)` and queue the rest. Use `spawn_agent` for new
+   work; use `followup_task` only for the same idle worker and task lineage.
+3. Keep orchestration in the root parent. Workers must not spawn or delegate to other agents.
+4. Refill free slots from the current ready queue, then collect the wave. Record every labeled
+   result as `done`, `blocked`, or `failed`, including changed paths, checks, risks, and the reason
+   for any interruption or unavailability. Use bounded waits; after one no-progress check,
+   interrupt a stalled worker and record it as `failed`. Prefer concise evidence over raw logs.
+5. Validate results and replan only within the original objective. Start another wave only when
+   required work is ready and delegation adds value; every wave must close or advance a planned
+   task. Preserve ownership across active tasks.
+6. Retry a safe pre-start or transient failure at most once with the same model and effort. If
+   execution or writes may have started, inspect state before an idempotent continuation; never
+   blindly retry writes.
+7. Set parent state `DONE` when the objective and parent-level checks pass. Set parent state
+   `BLOCKED` when dependencies failed, no task can progress, or a budget is exhausted. Report
+   every task status and residual risk.
 
 ## Effort mapping
 
@@ -44,9 +52,5 @@ State the selected count and task boundaries before launching workers.
 | `xhigh` | `luna_xhigh` |
 | `max` | `luna_worker` |
 
-## Guardrails
-
-- Native Luna workers inherit the parent conversation's service tier and live runtime settings.
-- Never change the parent service tier or silently substitute another model or effort.
-- Do not let concurrent workers edit overlapping files. Assign ownership explicitly.
-- Keep sequential dependencies in the parent task.
+Never change the parent service tier or silently substitute another model or effort. Never let
+concurrent workers edit overlapping paths.

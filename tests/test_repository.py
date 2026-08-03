@@ -42,7 +42,11 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertNotIn("service_tier", agent)
             self.assertNotIn("sandbox_mode", agent)
             self.assertTrue(agent["description"].strip())
-            self.assertTrue(agent["developer_instructions"].strip())
+            instructions = agent["developer_instructions"]
+            self.assertTrue(instructions.strip())
+            self.assertIn("Do not spawn or delegate to other agents", instructions)
+            self.assertIn("status=done|blocked|failed", instructions)
+            self.assertIn("omit raw logs", instructions)
 
     def test_skill_uses_only_native_subagents(self) -> None:
         skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
@@ -58,6 +62,8 @@ class RepositoryContractTests(unittest.TestCase):
         ):
             self.assertIn(f"`{name}`", skill)
         self.assertIn("spawn_agent", skill)
+        self.assertIn("followup_task", skill)
+        self.assertIn("list_agents", skill)
         self.assertNotIn("codex exec", skill)
         self.assertNotIn("service_tier =", skill)
         self.assertIn("name: luna-agent", skill)
@@ -68,6 +74,9 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn('display_name: "Luna Agent"', metadata)
         self.assertIn("default to `auto`", skill)
         self.assertIn("agents=auto", metadata)
+        self.assertIn("allow_implicit_invocation: false", metadata)
+        self.assertIn("Use only when the user explicitly invokes $luna-agent", skill)
+        self.assertIn("Reject invalid or mixed per-task values", skill)
 
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("appear as **Luna Agent**", readme)
@@ -77,9 +86,35 @@ class RepositoryContractTests(unittest.TestCase):
     def test_documentation_explains_auto_agent_selection(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         architecture = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
-        self.assertIn("| Agents | `auto`, 1 to 4 | `auto` |", readme)
+        self.assertIn("| Agents per wave | `auto`, 1 to 4 | `auto` |", readme)
         self.assertIn("defaults to `agents=auto`", architecture)
-        self.assertIn("up to four", architecture)
+        self.assertIn("per-wave concurrency ceiling", architecture)
+        self.assertIn("currently free native slots", architecture)
+
+    def test_skill_defines_a_bounded_multi_wave_state_machine(self) -> None:
+        skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        normalized_skill = " ".join(skill.split())
+        required_contracts = (
+            "finite labeled task plan",
+            "task lineage",
+            "Workers must not spawn or delegate",
+            "done`, `blocked`, or `failed",
+            "another wave",
+            "one initial attempt plus at most one retry or follow-up",
+            "after one no-progress check",
+            "every wave must close or advance a planned task",
+            "at most once",
+            "never blindly retry writes",
+            "Set parent state `DONE`",
+            "Set parent state `BLOCKED`",
+        )
+        for contract in required_contracts:
+            self.assertIn(contract, normalized_skill)
+
+    def test_skill_stays_context_efficient(self) -> None:
+        skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.assertLessEqual(len(skill.splitlines()), 90)
+        self.assertLessEqual(len(skill.split()), 500)
 
     def test_obsolete_runtime_api_and_mcp_files_are_absent(self) -> None:
         obsolete = [

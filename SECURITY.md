@@ -19,6 +19,10 @@ Native Luna agents inherit the parent session's live sandbox, approval policy, c
 tools, context, and service tier. Review the parent settings before delegation and assign
 non-overlapping file ownership to concurrent write workers.
 
+Only the root parent may orchestrate agents. Luna workers are instructed not to delegate further,
+which prevents recursive fan-out. Unknown or partially completed writes are inspected before any
+retry, and the parent never blindly repeats a write task.
+
 The installer writes only explicitly listed files. It refuses to replace different existing files
 unless the user supplies `-Force` or `--force`, and it never edits the user's base
 `~/.codex/config.toml`.

@@ -35,7 +35,7 @@ The installer adds a `luna` profile, five native Luna presets, and the `luna-age
 not edit your main `~/.codex/config.toml` file.
 
 In Codex, both the project and the skill appear as **Luna Agent**. Invoke the skill as
-`$luna-agent`.
+`$luna-agent`. Explicit invocation keeps the Skill body out of unrelated conversations.
 
 When upgrading from version 0.3 or earlier, add `-Force` on Windows or `--force` on macOS/Linux.
 The installer then renames the old `delegate-luna-workers` directory to `luna-agent` instead of
@@ -64,13 +64,17 @@ permissions, approvals, configuration, and tools.
 | Setting | Values | Default |
 | --- | --- | --- |
 | Reasoning | `low`, `medium`, `high`, `xhigh`, `max` | `max` |
-| Agents | `auto`, 1 to 4 | `auto` |
+| Agents per wave | `auto`, 1 to 4 | `auto` |
 
-With `agents=auto`, Codex uses one worker for a small or sequential task and adds workers only for
-independent work, up to four. An explicit number is an upper bound, so Codex will not duplicate work
-just to reach it.
+With `agents=auto`, Codex uses one worker for one bounded task and one per ready independent task,
+up to the configured limit and currently free slots. An explicit number is a per-wave upper bound;
+Codex queues excess work instead of duplicating tasks or exceeding capacity.
 
 When several workers can edit files, give each worker separate files or directories.
+
+The parent may run several waves for the same objective. It launches only tasks whose dependencies
+are ready, validates each result, then unlocks the next wave. It reuses an idle worker only for the
+same task lineage and stops when the objective is done or no safe progress remains.
 
 ## Check the setup
 
@@ -90,9 +94,9 @@ macOS or Linux:
 
 ## How it works
 
-The Skill maps the requested reasoning effort to one of five installed Luna presets and asks Codex
-to spawn native child agents. Codex handles their threads, progress, communication, context, tools,
-permissions, and result collection.
+The Skill maps reasoning effort to one of five Luna presets. The root parent maintains a finite
+task plan, schedules dependency-ordered native child-agent waves, applies capacity and write-scope
+guards, validates concise results, and performs the final checks. Child workers never delegate.
 
 ## Troubleshooting
 
